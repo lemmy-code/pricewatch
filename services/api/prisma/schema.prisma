@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id           String         @id @default(uuid())
+  url          String
+  name         String?
+  store        String         @default("generic")
+  scrapeStatus String         @default("active") @map("scrape_status")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  alerts       Alert[]
+  priceHistory PriceHistory[]
+
+  @@map("products")
+}
+
+model Alert {
+  id                  String   @id @default(uuid())
+  productId           String   @map("product_id")
+  userEmail           String?  @map("user_email")
+  discordWebhookUrl   String?  @map("discord_webhook_url")
+  targetPrice         Decimal  @map("target_price") @db.Decimal(10, 2)
+  notificationChannel String   @default("both") @map("notification_channel")
+  triggered           Boolean  @default(false)
+  createdAt           DateTime @default(now()) @map("created_at")
+  product             Product  @relation(fields: [productId], references: [id])
+
+  @@map("alerts")
+}
+
+model PriceHistory {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  price     Decimal  @db.Decimal(10, 2)
+  currency  String   @default("EUR")
+  scrapedAt DateTime @default(now()) @map("scraped_at")
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("price_history")
+}
