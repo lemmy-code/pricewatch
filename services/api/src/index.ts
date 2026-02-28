@@ -1,5 +1,6 @@
 import express from 'express';
 import productRoutes from './routes/products';
+import alertRoutes from './routes/alerts';
 import { errorHandler } from './middleware/errorHandler';
 import { connectRabbitMQ } from './lib/rabbitmq';
 
@@ -11,6 +12,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/products', productRoutes);
+app.use('/alerts', alertRoutes);
 
 app.use(errorHandler);
 
