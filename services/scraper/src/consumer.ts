@@ -1,4 +1,4 @@
-import amqplib, { Channel, ConsumeMessage } from 'amqplib';
+import amqplib, { ConsumeMessage } from 'amqplib';
 import { EXCHANGE_NAME, QUEUES, ROUTING_KEYS, PriceCheckRequestedEvent, PriceDroppedEvent, AlertInfo } from '../../../shared/types/events';
 import { scrapePrice } from './scrapers';
 import { PrismaClient } from '@prisma/client';
