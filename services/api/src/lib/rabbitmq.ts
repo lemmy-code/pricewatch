@@ -1,10 +1,10 @@
-import amqplib, { Channel, Connection } from 'amqplib';
+import amqplib from 'amqplib';
 import { EXCHANGE_NAME, QUEUES } from '../../../../shared/types/events';
 
-let connection: Connection | null = null;
-let channel: Channel | null = null;
+let connection: Awaited<ReturnType<typeof amqplib.connect>> | null = null;
+let channel: Awaited<ReturnType<Awaited<ReturnType<typeof amqplib.connect>>['createChannel']>> | null = null;
 
-export async function connectRabbitMQ(): Promise<Channel> {
+export async function connectRabbitMQ() {
   if (channel) return channel;
 
   const url = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
