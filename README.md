@@ -291,7 +291,7 @@ curl http://localhost:3000/health
 # Add a product (store type auto-detected from URL)
 curl -X POST http://localhost:3000/products \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://www.amazon.com/dp/B0BShKHB2H", "name": "Sony WH-1000XM5"}'
+  -d '{"url": "https://www.amazon.com/dp/B0CT5KP3GL", "name": "Sony WH-1000XM5"}'
 # -> {"id":"uuid","url":"...","name":"Sony WH-1000XM5","store":"amazon","scrapeStatus":"active",...}
 
 # Set a price alert (Discord + Email)
