@@ -209,63 +209,78 @@ pricewatch/
 ## Development Plan
 
 ### Phase 1 — Infrastructure
-- [ ] `docker-compose.yml` — postgres, rabbitmq, all services
-- [ ] `.env.example` with all variables
-- [ ] Prisma schema + migrations
-- [ ] Shared `events.ts` — TypeScript interfaces for all queue messages
-- [ ] RabbitMQ helper — connection, publish, consume, DLQ setup
+- [x] `docker-compose.yml` — postgres, rabbitmq, all services
+- [x] `.env.example` with all variables
+- [x] Prisma schema + migrations
+- [x] Shared `events.ts` — TypeScript interfaces for all queue messages
+- [x] RabbitMQ helper — connection, publish, consume, DLQ setup
 
 ### Phase 2 — API Service
-- [ ] Express setup + middleware (error handler, validation)
-- [ ] `POST /products` — add product (auto-detect store type)
-- [ ] `GET /products` — list with latest price
-- [ ] `POST /alerts` — set target price, email, discord webhook, channel preference
-- [ ] `GET /alerts/:id` — alert status
-- [ ] Publish `price.check.requested` event
+- [x] Express setup + middleware (error handler, validation)
+- [x] `POST /products` — add product (auto-detect store type)
+- [x] `GET /products` — list with latest price
+- [x] `POST /alerts` — set target price, email, discord webhook, channel preference
+- [x] `GET /alerts/:id` — alert status
+- [x] Publish `price.check.requested` event
 
 ### Phase 3 — Scraper Service
-- [ ] Consume `price.check.requested`
-- [ ] Amazon parser (Cheerio)
-- [ ] JSON-LD / meta tag fallback parser
-- [ ] Save price to `price_history`
-- [ ] Compare with target prices -> publish `price.dropped`
-- [ ] Retry logic — exponential backoff (1s -> 2s -> 4s)
-- [ ] DLQ consumer — log + mark `scrape_status = failed`
+- [x] Consume `price.check.requested`
+- [x] Amazon parser (Cheerio)
+- [x] JSON-LD / meta tag fallback parser
+- [x] Save price to `price_history`
+- [x] Compare with target prices -> publish `price.dropped`
+- [x] Retry logic — exponential backoff (1s -> 2s -> 4s)
+- [x] DLQ consumer — log + mark `scrape_status = failed`
 
 ### Phase 4 — Notification + Scheduler
-- [ ] Consume `price.dropped`
-- [ ] Discord webhook notification with embed
-- [ ] Email notification via Nodemailer
-- [ ] Scheduler — cron job every 30 min for active products
-- [ ] Publish `price.check.requested` batch
+- [x] Consume `price.dropped`
+- [x] Discord webhook notification with embed
+- [x] Email notification via Nodemailer
+- [x] Scheduler — cron job every 30 min for active products
+- [x] Publish `price.check.requested` batch
 
 ### Phase 5 — Polish
-- [ ] Jest tests for API endpoints (Supertest)
-- [ ] Jest tests for scraper logic (mock axios)
-- [ ] ESLint + Prettier configuration
-- [ ] README — final diagrams, setup instructions, API examples
-- [ ] GitHub Actions CI — lint + test on every push
+- [x] Jest tests for API endpoints (Supertest)
+- [x] Jest tests for scraper logic (mock axios)
+- [x] ESLint + Prettier configuration
+- [x] README — final diagrams, setup instructions, API examples
+- [x] GitHub Actions CI — lint + test on every push
 
 ---
 
 ## Quick Start
 
+### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/) + Docker Compose
+- Node.js 20+ (for local development)
+
+### Setup
+
 ```bash
 # 1. Clone repo
-git clone https://github.com/YOUR_USERNAME/pricewatch
+git clone https://github.com/lemmy-code/pricewatch
 cd pricewatch
 
 # 2. Environment
 cp .env.example .env
+# Edit .env to add your Discord webhook URL and/or Gmail SMTP credentials
 
 # 3. Start everything
-docker compose up --build
+docker-compose up --build
 
-# 4. Run migrations
-docker compose exec api npx prisma migrate dev
+# 4. Run database migrations (in a new terminal)
+docker exec pricewatch-api-1 npx prisma migrate dev --name init
 
 # API is available at http://localhost:3000
 # RabbitMQ Management UI at http://localhost:15672 (guest/guest)
+```
+
+### Verify it works
+
+```bash
+# Health check
+curl http://localhost:3000/health
+# -> {"status":"ok"}
 ```
 
 ---
@@ -273,24 +288,38 @@ docker compose exec api npx prisma migrate dev
 ## API Examples
 
 ```bash
-# Add a product
+# Add a product (store type auto-detected from URL)
 curl -X POST http://localhost:3000/products \
   -H "Content-Type: application/json" \
   -d '{"url": "https://www.amazon.com/dp/B0BShKHB2H", "name": "Sony WH-1000XM5"}'
+# -> {"id":"uuid","url":"...","name":"Sony WH-1000XM5","store":"amazon","scrapeStatus":"active",...}
 
-# Set a price alert (both Discord + Email)
+# Set a price alert (Discord + Email)
 curl -X POST http://localhost:3000/alerts \
   -H "Content-Type: application/json" \
   -d '{
-    "productId": "uuid-here",
+    "productId": "uuid-from-above",
     "userEmail": "you@email.com",
     "discordWebhookUrl": "https://discord.com/api/webhooks/...",
     "targetPrice": 249.99,
     "notificationChannel": "both"
   }'
 
-# List all products
+# List all products with latest prices
 curl http://localhost:3000/products
+# -> [{"id":"...","name":"Sony WH-1000XM5","latestPrice":"299.99","alertCount":1,...}]
+
+# Check alert status
+curl http://localhost:3000/alerts/{alert-id}
+
+# Reactivate a failed product
+curl -X PATCH http://localhost:3000/products/{product-id}/reactivate
+
+# Test: simulate a price drop (triggers Discord/email notifications)
+curl -X POST http://localhost:3000/test/price-drop \
+  -H "Content-Type: application/json" \
+  -d '{"productId": "uuid-here"}'
+# -> {"message":"Price drop event published","alerts":1}
 ```
 
 ---
@@ -319,6 +348,21 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-id/your-webhoo
 
 ---
 
+## Testing
+
+```bash
+# Run API tests (14 tests)
+cd services/api && npx jest --verbose
+
+# Run scraper tests (13 tests)
+cd services/scraper && npx jest --verbose
+
+# Lint all services
+npm run lint
+```
+
+---
+
 ## Key Concepts Demonstrated
 
 - **Microservices** — 4 independent services with clear responsibilities
@@ -330,7 +374,5 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-id/your-webhoo
 - **Multi-Channel Notifications** — Discord webhooks + email via Nodemailer
 - **Web Scraping** — Amazon parser + JSON-LD structured data fallback
 - **CI/CD** — GitHub Actions pipeline
-
----
-
-*Built as a portfolio project to demonstrate event-driven microservices architecture.*
+- **Input Validation** — Zod schemas on all endpoints
+- **27 Unit Tests** — Jest + Supertest with mocked dependencies
