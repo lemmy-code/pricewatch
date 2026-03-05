@@ -2,10 +2,11 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
 import productRoutes from './routes/products';
 import alertRoutes from './routes/alerts';
 import { errorHandler } from './middleware/errorHandler';
-import { connectRabbitMQ, publishMessage } from './lib/rabbitmq';
+import { connectRabbitMQ, closeRabbitMQ, publishMessage } from './lib/rabbitmq';
 import prisma from './lib/db';
 
 const app = express();
@@ -24,9 +25,15 @@ app.use(rateLimit({
   message: { error: 'Too many requests, please try again later' },
 }));
 app.use(express.json({ limit: '10kb' }));
+app.use(morgan('short'));
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+app.get('/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', db: 'connected', timestamp: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ status: 'degraded', db: 'disconnected' });
+  }
 });
 
 app.use('/products', productRoutes);
@@ -85,9 +92,20 @@ const PORT = process.env.PORT || 3000;
 
 async function start(): Promise<void> {
   await connectRabbitMQ();
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`API service running on port ${PORT}`);
   });
+
+  const shutdown = async (signal: string): Promise<void> => {
+    console.log(`${signal} received, shutting down gracefully...`);
+    server.close();
+    await closeRabbitMQ();
+    await prisma.$disconnect();
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 start().catch(console.error);
