@@ -12,7 +12,8 @@
     "@prisma/client": "^6.4.1",
     "amqplib": "^0.10.5",
     "axios": "^1.7.9",
-    "cheerio": "^1.0.0"
+    "cheerio": "^1.0.0",
+    "puppeteer": "^24.4.0"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.6",
