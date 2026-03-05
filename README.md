@@ -16,7 +16,7 @@
 | Primary Database | PostgreSQL 15 |
 | ORM | Prisma |
 | Containerization | Docker + Docker Compose |
-| HTTP Scraping | Axios + Cheerio + JSON-LD |
+| HTTP Scraping | Puppeteer + Cheerio (Amazon) / Axios + JSON-LD (generic) |
 | Notifications | Nodemailer (Gmail SMTP) + Discord Webhook |
 | Scheduling | node-cron |
 | Resilience | Dead Letter Queue + Retry logic |
@@ -80,8 +80,8 @@
 
 ## Scraping Strategy
 
-1. **Amazon URLs** — dedicated parser using known CSS selectors for price extraction
-2. **All other URLs** — JSON-LD structured data (`@type: Product`) or `og:price:amount` meta tags
+1. **Amazon URLs** — dedicated Puppeteer headless browser parser using known CSS selectors for price extraction
+2. **All other URLs** — JSON-LD structured data (`@type: Product`) or `og:price:amount` meta tags (works with IKEA, Best Buy, Target, etc.)
 3. **No match** — clear error message, product marked for review
 
 ---
@@ -289,6 +289,13 @@ curl http://localhost:3000/health
 
 ```bash
 # Add a product (store type auto-detected from URL)
+# Works with any site that has JSON-LD structured data (IKEA, Best Buy, Target, etc.)
+curl -X POST http://localhost:3000/products \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.ikea.com/us/en/p/kallax-shelf-unit-white-20275814/", "name": "IKEA KALLAX Shelf Unit"}'
+# -> {"id":"uuid","url":"...","name":"IKEA KALLAX Shelf Unit","store":"generic","scrapeStatus":"active",...}
+
+# Amazon products use dedicated Puppeteer-based parser
 curl -X POST http://localhost:3000/products \
   -H "Content-Type: application/json" \
   -d '{"url": "https://www.amazon.com/dp/B0CT5KP3GL", "name": "Sony WH-1000XM5"}'
@@ -301,13 +308,13 @@ curl -X POST http://localhost:3000/alerts \
     "productId": "uuid-from-above",
     "userEmail": "you@email.com",
     "discordWebhookUrl": "https://discord.com/api/webhooks/...",
-    "targetPrice": 249.99,
+    "targetPrice": 45.00,
     "notificationChannel": "both"
   }'
 
 # List all products with latest prices
 curl http://localhost:3000/products
-# -> [{"id":"...","name":"Sony WH-1000XM5","latestPrice":"299.99","alertCount":1,...}]
+# -> [{"id":"...","name":"IKEA KALLAX Shelf Unit","latestPrice":"44.99","currency":"USD","alertCount":1,...}]
 
 # Check alert status
 curl http://localhost:3000/alerts/{alert-id}
@@ -372,7 +379,7 @@ npm run lint
 - **TypeScript Strict** — shared types between services, zero `any`
 - **Prisma ORM** — type-safe database queries
 - **Multi-Channel Notifications** — Discord webhooks + email via Nodemailer
-- **Web Scraping** — Amazon parser + JSON-LD structured data fallback
+- **Web Scraping** — Puppeteer headless browser (Amazon) + JSON-LD structured data (generic sites)
 - **CI/CD** — GitHub Actions pipeline
 - **Input Validation** — Zod schemas on all endpoints
 - **27 Unit Tests** — Jest + Supertest with mocked dependencies

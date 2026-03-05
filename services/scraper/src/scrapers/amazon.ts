@@ -25,7 +25,7 @@ export async function scrapeAmazon(url: string): Promise<ScrapeResult> {
     );
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
 
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
 
     // Wait for price to appear
     await page.waitForSelector('.a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice, .a-price-whole', {
@@ -35,6 +35,7 @@ export async function scrapeAmazon(url: string): Promise<ScrapeResult> {
     });
 
     const html = await page.content();
+
     const $ = cheerio.load(html);
 
     const selectors = [

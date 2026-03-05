@@ -35,6 +35,7 @@ export async function startConsumer(): Promise<void> {
 
     try {
       const result = await scrapePrice(event.url, event.store);
+      console.log(`Scraped ${event.url}: ${result.currency} ${result.price}`);
 
       await prisma.priceHistory.create({
         data: {
