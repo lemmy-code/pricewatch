@@ -334,7 +334,7 @@ npm run lint
 
 - **Amazon scraping** — Amazon aggressively blocks headless browsers and server-side requests. The Puppeteer-based parser works locally but may return errors when running from cloud/Docker environments. In production, a scraping proxy service (ScraperAPI, Bright Data) would solve this.
 - **JSON-LD dependency** — The generic scraper relies on sites embedding structured data. Sites without JSON-LD or OpenGraph price tags cannot be scraped (the system correctly marks them as `failed`).
-- **No authentication** — The API is open. A production version would need JWT/API key auth.
+- **No authentication** — The API uses Helmet, CORS, and rate limiting, but has no user auth. A production version would need JWT/API key auth.
 - **Single instance** — No horizontal scaling or load balancing. RabbitMQ supports this natively — adding more scraper instances would scale consumption automatically.
 
 ### Possible Improvements
@@ -342,7 +342,7 @@ npm run lint
 - **Scraping proxy integration** — Plug in a residential proxy service for reliable Amazon/Walmart scraping
 - **Price history charts** — Add a simple frontend to visualize price trends over time
 - **Webhook-based alerts** — Allow custom webhook URLs (Slack, Telegram) beyond Discord
-- **Rate limiting** — Add per-IP rate limiting to the API
+- **Authentication** — Add JWT or API key auth for user-specific alerts
 - **Product name auto-detection** — Scrape the product title automatically instead of requiring it in the request
 
 ---

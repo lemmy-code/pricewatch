@@ -1,4 +1,7 @@
 import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import productRoutes from './routes/products';
 import alertRoutes from './routes/alerts';
 import { errorHandler } from './middleware/errorHandler';
@@ -6,7 +9,21 @@ import { connectRabbitMQ, publishMessage } from './lib/rabbitmq';
 import prisma from './lib/db';
 
 const app = express();
-app.use(express.json());
+
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PATCH'],
+}));
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+}));
+app.use(express.json({ limit: '10kb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
