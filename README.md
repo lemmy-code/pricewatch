@@ -206,48 +206,6 @@ pricewatch/
 
 ---
 
-## Development Plan
-
-### Phase 1 — Infrastructure
-- [x] `docker-compose.yml` — postgres, rabbitmq, all services
-- [x] `.env.example` with all variables
-- [x] Prisma schema + migrations
-- [x] Shared `events.ts` — TypeScript interfaces for all queue messages
-- [x] RabbitMQ helper — connection, publish, consume, DLQ setup
-
-### Phase 2 — API Service
-- [x] Express setup + middleware (error handler, validation)
-- [x] `POST /products` — add product (auto-detect store type)
-- [x] `GET /products` — list with latest price
-- [x] `POST /alerts` — set target price, email, discord webhook, channel preference
-- [x] `GET /alerts/:id` — alert status
-- [x] Publish `price.check.requested` event
-
-### Phase 3 — Scraper Service
-- [x] Consume `price.check.requested`
-- [x] Amazon parser (Cheerio)
-- [x] JSON-LD / meta tag fallback parser
-- [x] Save price to `price_history`
-- [x] Compare with target prices -> publish `price.dropped`
-- [x] Retry logic — exponential backoff (1s -> 2s -> 4s)
-- [x] DLQ consumer — log + mark `scrape_status = failed`
-
-### Phase 4 — Notification + Scheduler
-- [x] Consume `price.dropped`
-- [x] Discord webhook notification with embed
-- [x] Email notification via Nodemailer
-- [x] Scheduler — cron job every 30 min for active products
-- [x] Publish `price.check.requested` batch
-
-### Phase 5 — Polish
-- [x] Jest tests for API endpoints (Supertest)
-- [x] Jest tests for scraper logic (mock axios)
-- [x] ESLint + Prettier configuration
-- [x] README — final diagrams, setup instructions, API examples
-- [x] GitHub Actions CI — lint + test on every push
-
----
-
 ## Quick Start
 
 ### Prerequisites
@@ -370,6 +328,25 @@ npm run lint
 
 ---
 
+## Limitations & Future Improvements
+
+### Current Limitations
+
+- **Amazon scraping** — Amazon aggressively blocks headless browsers and server-side requests. The Puppeteer-based parser works locally but may return errors when running from cloud/Docker environments. In production, a scraping proxy service (ScraperAPI, Bright Data) would solve this.
+- **JSON-LD dependency** — The generic scraper relies on sites embedding structured data. Sites without JSON-LD or OpenGraph price tags cannot be scraped (the system correctly marks them as `failed`).
+- **No authentication** — The API is open. A production version would need JWT/API key auth.
+- **Single instance** — No horizontal scaling or load balancing. RabbitMQ supports this natively — adding more scraper instances would scale consumption automatically.
+
+### Possible Improvements
+
+- **Scraping proxy integration** — Plug in a residential proxy service for reliable Amazon/Walmart scraping
+- **Price history charts** — Add a simple frontend to visualize price trends over time
+- **Webhook-based alerts** — Allow custom webhook URLs (Slack, Telegram) beyond Discord
+- **Rate limiting** — Add per-IP rate limiting to the API
+- **Product name auto-detection** — Scrape the product title automatically instead of requiring it in the request
+
+---
+
 ## Key Concepts Demonstrated
 
 - **Microservices** — 4 independent services with clear responsibilities
@@ -383,3 +360,9 @@ npm run lint
 - **CI/CD** — GitHub Actions pipeline
 - **Input Validation** — Zod schemas on all endpoints
 - **27 Unit Tests** — Jest + Supertest with mocked dependencies
+
+---
+
+## License
+
+[MIT](LICENSE)
